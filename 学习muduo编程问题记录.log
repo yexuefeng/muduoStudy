@@ -1,0 +1,34 @@
+/*************************************************************************
+	> File Name: 学习muduo编程问题记录.log
+	> Author: ye xuefeng
+	> Created Time: Fri 08 Sep 2017 07:13:31 PM CST
+ ************************************************************************/
+1. 由TcpServer创建echo server,运行时发现使用netcat连接服务器时能够正常处理，但是
+关闭netcat后，出现如下错误后，程序崩溃。
+20170908 10:49:46.139127Z  7498 INFO  TcpConnection::destructor [0.0.0.0:2017#1] at 0x8537450 fd= 6 - TcpConnection.cc:45
+main: channel.h:30: Channel::~Channel(): Assertion `!eventHandling_' failed.
+
+原因：在channel::handleEvent函数执行的过程中尝试析构channel对象。造成该情况的根本原因是因为
+在TcpServer::removeConnection函数中使用了loop->runInLoop函数，该函数有可能会立即执行TcpConnection::connectDestroy
+使用TcpConnection和其成员channel析构。在这里应当使用loop->queueInLoop函数。没有考虑清楚对象的
+生命周期.
+
+
+2.不能在析构函数中使用shared_from_this().使用该函数时会出现如下错误:
+therminate called after throw an instance of 'std::bad_weak_ptr'
+
+3.不能在顺序容器入set中存入weak_ptr智能指针,原因是weak_ptr没有定义默认的<关系。但是可以在顺序容器中存入
+shared_ptr智能指针;
+
+4.gettimeofday返回的struct timeval中的成员tv_sec转化为microSeconds时(tv_sec * 1000000)，需要使用int64_t的变量
+存储，否则会出现数据溢出。如下代码:
+    Timestamp.cc now()中的如下代码
+    struct timeval tv;
+    ::gettimeofday(&tv, NULL);
+    int64_t seconds = tv.tv_sec;
+    return Timestamp(seconds * kMicroSecondsPerSecond + tv.tv_usec);
+
+    如果修改为如下形式，则会出现数据溢出
+    struct timeval tv;
+    ::gettimeofday(&tv, NULL);
+    return Timestamp(tv_sec * kMicroSecondsPerSecond + tv.tv_usec);

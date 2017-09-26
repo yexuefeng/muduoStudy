@@ -32,3 +32,16 @@ shared_ptr智能指针;
     struct timeval tv;
     ::gettimeofday(&tv, NULL);
     return Timestamp(tv_sec * kMicroSecondsPerSecond + tv.tv_usec);
+
+5. STL算法std::copy(source.begin(), source.end(), dest.beign())可以正确处理内存重叠问题;
+
+6. c++中使用多个输出运算符<<时“从右到左计算各输出项的值,然后从左到右输出各项的值",例如
+   int a = 10;
+   std::cout << a << ", " << a++ << std::endl;
+   输出结果为:11, 10.
+   [在学习Muduo时写过如下测试用例]:
+   LOG_INFO << "Received " << buffer->readableBytes() << " bytes, "
+            << buffer->retrieveAsString()
+   每次都是输出：Received 0 bytes, ... 。原因在上述语句先执行buffer->retrieveAsString()，后执行
+   buffer->readableBytes()。在执行buffer->retrieveAsString()时将buffer中的内容清空了。
+   
